@@ -27,7 +27,7 @@ def embedding_kernel(
     mask = tl.arange(0, BLOCK_SIZE) < N
     cols = tl.arange(0, BLOCK_SIZE)
 
-    row_idx = tl.load(in_ptr)
+    row_idx = tl.load(in_ptr).to(tl.int32)
     weight_ptr += row_idx * N
     embedding_weight = tl.load(weight_ptr + cols, mask, other=0.0)
     tl.store(out_ptr + cols, embedding_weight, mask)
