@@ -43,6 +43,7 @@ namespace backend {
 }  // namespace flag_gems
 #elif defined(FLAGGEMS_USE_FLAGOS)
 #include <acl/acl.h>
+extern "C" void* FlagOS_GetCurrentStream(int device_index);
 namespace flag_gems {
 namespace backend {
   using StreamType = c10::Stream;
@@ -96,7 +97,6 @@ namespace backend {
     return stream;
 #elif defined(FLAGGEMS_USE_FLAGOS)
     (void)stream;
-    extern "C" void* FlagOS_GetCurrentStream(int device_index);
     return (aclrtStream)FlagOS_GetCurrentStream(0);
 #else
     return stream.stream();
