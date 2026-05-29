@@ -145,7 +145,12 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 if(NOT _ret EQUAL 0)
-  message(FATAL_ERROR "Triton IS NOT installed properly")
+  if(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    message(WARNING "Triton is not installed. FlagGems C++ extensions will build but JIT compilation requires triton at runtime.")
+    set(TRITON_VERSION "0.0.0")
+  else()
+    message(FATAL_ERROR "Triton IS NOT installed properly")
+  endif()
 endif()
 if(TRITON_VERSION VERSION_GREATER_EQUAL "3.5")
   set(TRITON_GE_3P5 1)
