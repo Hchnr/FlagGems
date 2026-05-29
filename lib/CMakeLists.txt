@@ -60,6 +60,11 @@ elseif(FLAGGEMS_BACKEND STREQUAL "GCU")
     target_link_libraries(operators
       PUBLIC Torch::Torch
       PRIVATE TritonJIT::triton_jit)
+elseif(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    target_link_flagos_libraries(operators)
+    target_link_libraries(operators
+      PUBLIC Torch::Torch
+      PRIVATE TritonJIT::triton_jit)
 endif()
 target_compile_definitions(operators PRIVATE BACKEND_${FLAGGEMS_BACKEND})
 

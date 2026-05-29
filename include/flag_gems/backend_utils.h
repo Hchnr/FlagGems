@@ -41,6 +41,14 @@ namespace backend {
   using RawStreamType = topsStream_t;
 }  // namespace backend
 }  // namespace flag_gems
+#elif defined(FLAGGEMS_USE_FLAGOS)
+#include <acl/acl.h>
+namespace flag_gems {
+namespace backend {
+  using StreamType = c10::Stream;
+  using RawStreamType = aclrtStream;
+}  // namespace backend
+}  // namespace flag_gems
 #endif
 
 namespace flag_gems {
@@ -57,9 +65,11 @@ namespace backend {
 #elif defined(FLAGGEMS_USE_GCU)
     (void)device;
     return nullptr;
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    return c10::Stream(c10::Stream::UNSAFE, device, 0);
 #else
 #error \
-    "No backend defined. Define one of: FLAGGEMS_USE_CUDA, FLAGGEMS_USE_IX, FLAGGEMS_USE_NPU, FLAGGEMS_USE_MUSA, FLAGGEMS_USE_GCU"
+    "No backend defined. Define one of: FLAGGEMS_USE_CUDA, FLAGGEMS_USE_IX, FLAGGEMS_USE_NPU, FLAGGEMS_USE_MUSA, FLAGGEMS_USE_GCU, FLAGGEMS_USE_FLAGOS"
 #endif
   }
 
@@ -73,6 +83,8 @@ namespace backend {
     return c10::musa::getCurrentMUSAStream();
 #elif defined(FLAGGEMS_USE_GCU)
     return nullptr;
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    return c10::Stream(c10::Stream::UNSAFE, at::Device(at::kPrivateUse1, 0), 0);
 #else
 #error "No backend defined"
 #endif
@@ -82,6 +94,10 @@ namespace backend {
   inline RawStreamType getRawStream(const StreamType& stream) {
 #if defined(FLAGGEMS_USE_GCU)
     return stream;
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    (void)stream;
+    extern "C" void* FlagOS_GetCurrentStream(int device_index);
+    return (aclrtStream)FlagOS_GetCurrentStream(0);
 #else
     return stream.stream();
 #endif
@@ -97,6 +113,8 @@ namespace backend {
     TORCH_CHECK(tensor.is_privateuseone(), tensor_name, " must be on MUSA device, but got ", tensor.device());
 #elif defined(FLAGGEMS_USE_GCU)
     TORCH_CHECK(tensor.is_privateuseone(), tensor_name, " must be on GCU device, but got ", tensor.device());
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    TORCH_CHECK(tensor.is_privateuseone(), tensor_name, " must be on FlagOS device, but got ", tensor.device());
 #else
 #error "No backend defined"
 #endif
@@ -111,6 +129,8 @@ namespace backend {
 #elif defined(FLAGGEMS_USE_MUSA)
     return tensor.is_privateuseone();
 #elif defined(FLAGGEMS_USE_GCU)
+    return tensor.is_privateuseone();
+#elif defined(FLAGGEMS_USE_FLAGOS)
     return tensor.is_privateuseone();
 #else
 #error "No backend defined"
@@ -129,6 +149,8 @@ namespace backend {
     return "MUSA";
 #elif defined(FLAGGEMS_USE_GCU)
     return "GCU";
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    return "FlagOS";
 #else
 #error "No backend defined"
 #endif
@@ -138,7 +160,7 @@ namespace backend {
   inline at::DeviceType getBackendDeviceType() {
 #if defined(FLAGGEMS_USE_CUDA) || defined(FLAGGEMS_USE_IX)
     return at::kCUDA;
-#elif defined(FLAGGEMS_USE_NPU) || defined(FLAGGEMS_USE_MUSA) || defined(FLAGGEMS_USE_GCU)
+#elif defined(FLAGGEMS_USE_NPU) || defined(FLAGGEMS_USE_MUSA) || defined(FLAGGEMS_USE_GCU) || defined(FLAGGEMS_USE_FLAGOS)
     return at::kPrivateUse1;
 #else
 #error "No backend defined"
@@ -154,6 +176,8 @@ namespace backend {
 #elif defined(FLAGGEMS_USE_NPU)
     return 0;  // TODO: NPU current device query
 #elif defined(FLAGGEMS_USE_GCU)
+    return 0;
+#elif defined(FLAGGEMS_USE_FLAGOS)
     return 0;
 #else
     return 0;
@@ -180,6 +204,8 @@ namespace backend {
     return true;
 #elif defined(FLAGGEMS_USE_GCU)
     return true;
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    return true;
 #else
     return false;
 #endif
@@ -195,6 +221,8 @@ namespace backend {
     // MUSA sync if needed
 #elif defined(FLAGGEMS_USE_GCU)
     topsDeviceSynchronize();
+#elif defined(FLAGGEMS_USE_FLAGOS)
+    aclrtSynchronizeDevice();
 #endif
   }
 
