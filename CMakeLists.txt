@@ -99,7 +99,12 @@ if(FLAGGEMS_USE_EXTERNAL_TRITON_JIT)
   find_package(TritonJIT 0.1.0 CONFIG REQUIRED)
 else()
   set(TRITON_JIT_INSTALL ON) # install triton jit
-  set(BACKEND ${FLAGGEMS_BACKEND} CACHE STRING "Backend for TritonJIT" FORCE)
+  # TritonJIT only knows CUDA/IX/MUSA/MACA/NPU/GCU; map FLAGOS to NPU (same Ascend platform)
+  if(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    set(BACKEND "NPU" CACHE STRING "Backend for TritonJIT" FORCE)
+  else()
+    set(BACKEND ${FLAGGEMS_BACKEND} CACHE STRING "Backend for TritonJIT" FORCE)
+  endif()
   FetchContent_Declare(TritonJIT
     GIT_REPOSITORY https://github.com/flagos-ai/libtriton_jit
     GIT_TAG master
