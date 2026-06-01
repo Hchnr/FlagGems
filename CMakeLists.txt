@@ -41,17 +41,18 @@ endif()
 # Backend Selection
 # ==============================================================================
 set(FLAGGEMS_BACKEND "CUDA" CACHE STRING "Target backend: CUDA, IX, MUSA, NPU, GCU")
-set_property(CACHE FLAGGEMS_BACKEND PROPERTY STRINGS "CUDA" "IX" "MUSA" "NPU" "GCU")
+set_property(CACHE FLAGGEMS_BACKEND PROPERTY STRINGS "CUDA" "IX" "MUSA" "NPU" "GCU" "FLAGOS")
 
-if(NOT FLAGGEMS_BACKEND MATCHES "^(CUDA|IX|MUSA|NPU|GCU)$")
+if(NOT FLAGGEMS_BACKEND MATCHES "^(CUDA|IX|MUSA|NPU|GCU|FLAGOS)$")
     message(FATAL_ERROR "Invalid FLAGGEMS_BACKEND: ${FLAGGEMS_BACKEND}")
 endif()
 message(STATUS "Building FlagGems with backend: ${FLAGGEMS_BACKEND}")
 
-# NPU, MUSA and GCU do not need CUDA language
+# NPU, MUSA, GCU and FLAGOS do not need CUDA language
 if(FLAGGEMS_BACKEND STREQUAL "NPU"
    OR FLAGGEMS_BACKEND STREQUAL "MUSA"
-   OR FLAGGEMS_BACKEND STREQUAL "GCU")
+   OR FLAGGEMS_BACKEND STREQUAL "GCU"
+   OR FLAGGEMS_BACKEND STREQUAL "FLAGOS")
     project(FlagGems LANGUAGES CXX VERSION 0.1.0)
 else()
     project(FlagGems LANGUAGES CUDA CXX VERSION 0.1.0)
@@ -68,6 +69,8 @@ elseif(FLAGGEMS_BACKEND STREQUAL "MUSA")
     add_compile_definitions(FLAGGEMS_USE_MUSA)
 elseif(FLAGGEMS_BACKEND STREQUAL "GCU")
     add_compile_definitions(FLAGGEMS_USE_GCU)
+elseif(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    add_compile_definitions(FLAGGEMS_USE_FLAGOS)
 endif()
 
 message(STATUS "Building flag gems with C extensions")
@@ -85,6 +88,8 @@ elseif(FLAGGEMS_BACKEND STREQUAL "MUSA")
     include(BackendMUSA)
 elseif(FLAGGEMS_BACKEND STREQUAL "GCU")
     include(BackendGCU)
+elseif(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    include(BackendFlagOS)
 endif()
 
 # torch
@@ -94,7 +99,12 @@ if(FLAGGEMS_USE_EXTERNAL_TRITON_JIT)
   find_package(TritonJIT 0.1.0 CONFIG REQUIRED)
 else()
   set(TRITON_JIT_INSTALL ON) # install triton jit
-  set(BACKEND ${FLAGGEMS_BACKEND} CACHE STRING "Backend for TritonJIT" FORCE)
+  # TritonJIT only knows CUDA/IX/MUSA/MACA/NPU/GCU; map FLAGOS to NPU (same Ascend platform)
+  if(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    set(BACKEND "NPU" CACHE STRING "Backend for TritonJIT" FORCE)
+  else()
+    set(BACKEND ${FLAGGEMS_BACKEND} CACHE STRING "Backend for TritonJIT" FORCE)
+  endif()
   FetchContent_Declare(TritonJIT
     GIT_REPOSITORY https://github.com/flagos-ai/libtriton_jit
     GIT_TAG master
@@ -135,7 +145,12 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 if(NOT _ret EQUAL 0)
-  message(FATAL_ERROR "Triton IS NOT installed properly")
+  if(FLAGGEMS_BACKEND STREQUAL "FLAGOS")
+    message(WARNING "Triton is not installed. FlagGems C++ extensions will build but JIT compilation requires triton at runtime.")
+    set(TRITON_VERSION "0.0.0")
+  else()
+    message(FATAL_ERROR "Triton IS NOT installed properly")
+  endif()
 endif()
 if(TRITON_VERSION VERSION_GREATER_EQUAL "3.5")
   set(TRITON_GE_3P5 1)

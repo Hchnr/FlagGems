@@ -151,8 +151,9 @@ at::Tensor fp8_matmul_direct(const at::Tensor& a,
 
   c10::DeviceGuard guard(C.device());
   backend::StreamType stream = backend::getCurrentStream();
+  backend::RawStreamType raw_stream = backend::getRawStream(stream);
 
-  jit.launch_with_raw_args(stream,
+  jit.launch_with_raw_args(raw_stream,
                            grid_x,
                            1,
                            1,  // grid
